@@ -42,6 +42,10 @@ public class EurekaConfigBasedInstanceInfoProvider implements Provider<InstanceI
         this.config = config;
     }
 
+    /**
+     * 基于instanceConfig构造出一个InstanceInfo实例
+     * @return InstanceInfo 代表一个服务实例的信息
+     */
     @Override
     public synchronized InstanceInfo get() {
         if (instanceInfo == null) {
@@ -55,6 +59,7 @@ public class EurekaConfigBasedInstanceInfoProvider implements Provider<InstanceI
             }
 
             // Builder the instance information to be registered with eureka server
+            // 建造者模式
             InstanceInfo.Builder builder = InstanceInfo.Builder.newBuilder(vipAddressResolver);
 
             // set the appropriate id for the InstanceInfo, falling back to datacenter Id if applicable, else hostname

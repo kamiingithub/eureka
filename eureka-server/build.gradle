@@ -21,6 +21,7 @@ task copyLibs(type: Copy) {
     from configurations.runtime	
 }
 
+// 加载页面静态资源
 war {
     from (project(':eureka-resources').file('build/resources/main'))
 }

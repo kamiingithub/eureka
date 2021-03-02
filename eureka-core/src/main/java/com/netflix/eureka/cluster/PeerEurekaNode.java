@@ -136,6 +136,7 @@ public class PeerEurekaNode {
         batchingDispatcher.process(
                 taskId("register", info),
                 new InstanceReplicationTask(targetHost, Action.Register, info, null, true) {
+                    @Override
                     public EurekaHttpResponse<Void> execute() {
                         return replicationClient.register(info);
                     }
@@ -245,6 +246,7 @@ public class PeerEurekaNode {
         nonBatchingDispatcher.process(
                 asgName,
                 new AsgReplicationTask(targetHost, Action.StatusUpdate, asgName, newStatus) {
+                    @Override
                     public EurekaHttpResponse<?> execute() {
                         return replicationClient.statusUpdate(asgName, newStatus);
                     }

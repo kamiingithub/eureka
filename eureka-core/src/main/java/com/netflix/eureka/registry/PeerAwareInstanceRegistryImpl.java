@@ -77,6 +77,7 @@ import javax.inject.Singleton;
  * {@link com.netflix.eureka.EurekaServerConfig#getWaitTimeInMsWhenSyncEmpty()}.
  * </p>
  *
+ * 即自我保护机制，停止摘除过期实例
  * <p>
  * One important thing to note about <em>renewals</em>.If the renewal drops more
  * than the specified threshold as specified in

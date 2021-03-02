@@ -103,6 +103,7 @@ public class DefaultEurekaServerConfig implements EurekaServerConfig {
         ConfigurationManager.getConfigInstance().setProperty(
                 ARCHAIUS_DEPLOYMENT_ENVIRONMENT, env);
 
+        // 默认是eureka-server
         String eurekaPropsFile = EUREKA_PROPS_FILE.get();
         try {
             // ConfigurationManager
@@ -495,10 +496,10 @@ public class DefaultEurekaServerConfig implements EurekaServerConfig {
         for (String remoteRegionUrlWithNamePair : remoteRegionUrlWithNamePairs) {
             String[] pairSplit = remoteRegionUrlWithNamePair.split(pairSplitChar);
             if (pairSplit.length < 2) {
-                logger.error("Error reading eureka remote region urls from property {}. "
-                                + "Invalid entry {} for remote region url. The entry must contain region name and url "
-                                + "separated by a {}. Ignoring this entry.",
-                        new String[]{propName, remoteRegionUrlWithNamePair, pairSplitChar});
+//                logger.error("Error reading eureka remote region urls from property {}. "
+//                                + "Invalid entry {} for remote region url. The entry must contain region name and url "
+//                                + "separated by a {}. Ignoring this entry.",
+//                        new String[]{propName, remoteRegionUrlWithNamePair, pairSplitChar});
             } else {
                 String regionName = pairSplit[0];
                 String regionUrl = pairSplit[1];

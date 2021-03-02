@@ -44,6 +44,9 @@ public class ApplicationResourceTest extends AbstractTester {
         for (InstanceInfo instanceInfo : testApplication.getInstances()) {
             registry.register(instanceInfo, false);
         }
+        for (InstanceInfo instanceInfo : testApplication.getInstances()) {
+            registry.register(instanceInfo, false);
+        }
     }
 
     @Test

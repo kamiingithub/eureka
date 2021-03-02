@@ -20,8 +20,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Date;
 
 import com.netflix.appinfo.ApplicationInfoManager;
@@ -140,6 +142,8 @@ public class ExampleEurekaClient {
         ExampleEurekaClient sampleClient = new ExampleEurekaClient();
 
         // create the client
+        // 基于eureka-client.properties构建服务实例配置，基于服务实例配置构建服务实例(instanceInfo)，
+        // 基于这两个构建服务实例管理器(applicationInfoManager)
         ApplicationInfoManager applicationInfoManager = initializeApplicationInfoManager(new MyDataCenterInstanceConfig());
         EurekaClient client = initializeEurekaClient(applicationInfoManager, new DefaultEurekaClientConfig());
 

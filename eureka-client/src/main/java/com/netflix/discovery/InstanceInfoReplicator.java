@@ -100,12 +100,18 @@ class InstanceInfoReplicator implements Runnable {
         }
     }
 
+    /**
+     * 服务注册线程
+     */
+    @Override
     public void run() {
         try {
+            // 刷新实例信息
             discoveryClient.refreshInstanceInfo();
 
             Long dirtyTimestamp = instanceInfo.isDirtyWithTime();
             if (dirtyTimestamp != null) {
+                // 注册
                 discoveryClient.register();
                 instanceInfo.unsetIsDirty(dirtyTimestamp);
             }

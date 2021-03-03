@@ -415,8 +415,8 @@ public class ResponseCacheImpl implements ResponseCache {
                 case Application:
                     boolean isRemoteRegionRequested = key.hasRegions();
 
+                    // 全量
                     if (ALL_APPS.equals(key.getName())) {
-                        // 全量
                         if (isRemoteRegionRequested) {
                             tracer = serializeAllAppsWithRemoteRegionTimer.start();
                             payload = getPayLoad(key, registry.getApplicationsFromMultipleRegions(key.getRegions()));
@@ -438,6 +438,7 @@ public class ResponseCacheImpl implements ResponseCache {
                             tracer = serializeDeltaAppsTimer.start();
                             versionDelta.incrementAndGet();
                             versionDeltaLegacy.incrementAndGet();
+                            // 从recentlyChangedQueue获取增量注册表
                             payload = getPayLoad(key, registry.getApplicationDeltas());
                         }
                     } else {

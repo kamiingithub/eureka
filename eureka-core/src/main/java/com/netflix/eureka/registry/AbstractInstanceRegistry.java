@@ -327,6 +327,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             Map<String, Lease<InstanceInfo>> gMap = registry.get(appName);
             Lease<InstanceInfo> leaseToCancel = null;
             if (gMap != null) {
+                // 从本地注册表删除
                 leaseToCancel = gMap.remove(id);
             }
             synchronized (recentCanceledQueue) {
@@ -347,11 +348,14 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 String svip = null;
                 if (instanceInfo != null) {
                     instanceInfo.setActionType(ActionType.DELETED);
+                    // 更新recentlyChangedQueue
                     recentlyChangedQueue.add(new RecentlyChangedItem(leaseToCancel));
+                    // 更新最近更新的时间戳
                     instanceInfo.setLastUpdatedTimestamp();
                     vip = instanceInfo.getVIPAddress();
                     svip = instanceInfo.getSecureVipAddress();
                 }
+                // 失效缓存
                 invalidateCache(appName, vip, svip);
                 logger.info("Cancelled instance {}/{} (replication={})", appName, id, isReplication);
                 return true;
@@ -931,6 +935,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 Applications allAppsInLocalRegion = getApplications(false);
 
                 // 这里的regionNameVSRemoteRegistry,在eureka server初始化时，初始化上下文时初始化的
+                // 好像是从eureka-server.properties配置文件里获取的
                 for (RemoteRegionRegistry remoteRegistry : this.regionNameVSRemoteRegistry.values()) {
                     Applications applications = remoteRegistry.getApplicationDeltas();
                     for (Application application : applications.getRegisteredApplications()) {

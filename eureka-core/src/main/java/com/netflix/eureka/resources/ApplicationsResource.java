@@ -77,6 +77,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 带有appId，说明是应用级别的请求，所以到ApplicationResource
+     *
      * Gets information about a particular {@link com.netflix.discovery.shared.Application}.
      *
      * @param version

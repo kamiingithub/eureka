@@ -88,6 +88,8 @@ public class InstanceResource {
     }
 
     /**
+     * 服务续约
+     *
      * A put request for renewing lease from a client instance.
      *
      * @param isReplication

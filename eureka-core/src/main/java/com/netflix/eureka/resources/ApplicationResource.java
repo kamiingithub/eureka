@@ -118,6 +118,8 @@ public class ApplicationResource {
     }
 
     /**
+     * 带有id的说明是实例级别的，到InstanceResource
+     *
      * Gets information about a particular instance of an application.
      *
      * @param id

@@ -108,6 +108,12 @@ public class Lease<T> {
      * @param additionalLeaseMs any additional lease time to add to the lease evaluation in ms.
      */
     public boolean isExpired(long additionalLeaseMs) {
+
+    /**
+     *   如果已经主动过期 ｜｜ 当前时间 > 最近更新时间 + 续租时间 + EvictionTask任务延迟的时间
+     *   这里其实有个bug，续租的时候lastUpdateTimestamp已经加上duration了，所以这里要等两个duration
+     *  @see com.netflix.eureka.lease.Lease#renew
+     */
         return (evictionTimestamp > 0 || System.currentTimeMillis() > (lastUpdateTimestamp + duration + additionalLeaseMs));
     }
 

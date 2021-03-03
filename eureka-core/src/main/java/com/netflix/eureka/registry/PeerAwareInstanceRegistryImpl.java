@@ -237,7 +237,9 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
     @Override
     public void openForTraffic(ApplicationInfoManager applicationInfoManager, int count) {
         // Renewals happen every 30 seconds and for a minute it should be a factor of 2.
+        // 每分钟逾期收到的续租请求数 = 实例数*2 因为默认30s发一起心跳
         this.expectedNumberOfRenewsPerMin = count * 2;
+        // 计算阈值 = expectedNumberOfRenewsPerMin * 0.85
         this.numberOfRenewsPerMinThreshold =
                 (int) (this.expectedNumberOfRenewsPerMin * serverConfig.getRenewalPercentThreshold());
         logger.info("Got " + count + " instances from neighboring DS node");
@@ -368,6 +370,8 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
     }
 
     /*
+     * 主动下线
+     *
      * (non-Javadoc)
      *
      * @see com.netflix.eureka.registry.InstanceRegistry#cancel(java.lang.String,
@@ -489,10 +493,18 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
 
     @Override
     public boolean isLeaseExpirationEnabled() {
+        // 默认开启
         if (!isSelfPreservationModeEnabled()) {
             // The self preservation mode is disabled, hence allowing the instances to expire.
             return true;
         }
+
+        // numberOfRenewsPerMinThreshold在
+        // 1）注册+2
+        // 2）上part的初始化上下文，拉取数量
+        // 3）主动下线-2
+        // 4）server初始化上下文默认每15分钟调度updateRenewalThreshold，拉取数量
+        // getNumOfRenewsInLastMin获取到的是上一分钟接收到的心跳数
         return numberOfRenewsPerMinThreshold > 0 && getNumOfRenewsInLastMin() > numberOfRenewsPerMinThreshold;
     }
 

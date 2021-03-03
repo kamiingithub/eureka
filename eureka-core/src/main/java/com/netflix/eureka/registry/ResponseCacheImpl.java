@@ -129,6 +129,8 @@ public class ResponseCacheImpl implements ResponseCache {
         long responseCacheUpdateIntervalMs = serverConfig.getResponseCacheUpdateIntervalMs();
         this.readWriteCacheMap =
                 CacheBuilder.newBuilder().initialCapacity(1000)
+                        // 默认180s后过期
+                        // 往readWriteCacheMap中放入一个数据过后，自动会等180秒过后，就将这个数据给他过期了
                         .expireAfterWrite(serverConfig.getResponseCacheAutoExpirationInSeconds(), TimeUnit.SECONDS)
                         .removalListener(new RemovalListener<Key, Value>() {
                             @Override
@@ -153,6 +155,7 @@ public class ResponseCacheImpl implements ResponseCache {
                         });
 
         if (shouldUseReadOnlyResponseCache) {
+            // 自动更新readOnlyCacheMap
             timer.schedule(getCacheUpdateTask(),
                     new Date(((System.currentTimeMillis() / responseCacheUpdateIntervalMs) * responseCacheUpdateIntervalMs)
                             + responseCacheUpdateIntervalMs),
@@ -180,6 +183,7 @@ public class ResponseCacheImpl implements ResponseCache {
                         CurrentRequestVersion.set(key.getVersion());
                         Value cacheValue = readWriteCacheMap.get(key);
                         Value currentCacheValue = readOnlyCacheMap.get(key);
+                        // 如果有差异，则更新readOnlyCacheMap
                         if (cacheValue != currentCacheValue) {
                             readOnlyCacheMap.put(key, cacheValue);
                         }
@@ -243,6 +247,7 @@ public class ResponseCacheImpl implements ResponseCache {
     public void invalidate(String appName, @Nullable String vipAddress, @Nullable String secureVipAddress) {
         for (Key.KeyType type : Key.KeyType.values()) {
             for (Version v : Version.values()) {
+                // 统统过期
                 invalidate(
                         new Key(Key.EntityType.Application, appName, type, v, EurekaAccept.full),
                         new Key(Key.EntityType.Application, appName, type, v, EurekaAccept.compact),
@@ -338,6 +343,7 @@ public class ResponseCacheImpl implements ResponseCache {
     }
 
     /**
+     * 多级缓存机制
      * Get the payload in both compressed and uncompressed form.
      */
     @VisibleForTesting
@@ -345,6 +351,7 @@ public class ResponseCacheImpl implements ResponseCache {
         Value payload = null;
         try {
             if (useReadOnlyCache) {
+                // 先走只读缓存
                 final Value currentPayload = readOnlyCacheMap.get(key);
                 if (currentPayload != null) {
                     payload = currentPayload;
@@ -368,6 +375,7 @@ public class ResponseCacheImpl implements ResponseCache {
         EncoderWrapper encoderWrapper = serverCodecs.getEncoder(key.getType(), key.getEurekaAccept());
         String result;
         try {
+            // 对注册表进行编码
             result = encoderWrapper.encode(apps);
         } catch (Exception e) {
             logger.error("Failed to encode the payload for all apps", e);
@@ -408,14 +416,18 @@ public class ResponseCacheImpl implements ResponseCache {
                     boolean isRemoteRegionRequested = key.hasRegions();
 
                     if (ALL_APPS.equals(key.getName())) {
+                        // 全量
                         if (isRemoteRegionRequested) {
                             tracer = serializeAllAppsWithRemoteRegionTimer.start();
                             payload = getPayLoad(key, registry.getApplicationsFromMultipleRegions(key.getRegions()));
                         } else {
                             tracer = serializeAllAppsTimer.start();
+                            // 从注册表中获取全量注册表
                             payload = getPayLoad(key, registry.getApplications());
                         }
-                    } else if (ALL_APPS_DELTA.equals(key.getName())) {
+                    }
+                    // 增量
+                    else if (ALL_APPS_DELTA.equals(key.getName())) {
                         if (isRemoteRegionRequested) {
                             tracer = serializeDeltaAppsWithRemoteRegionTimer.start();
                             versionDeltaWithRegions.incrementAndGet();

@@ -325,8 +325,9 @@ public class DiscoveryClient implements EurekaClient {
         this.backupRegistryProvider = backupRegistryProvider;
 
         this.urlRandomizer = new EndpointUtils.InstanceInfoBasedUrlRandomizer(instanceInfo);
+        // 初始化本地注册表
         localRegionApps.set(new Applications());
-
+        // 拉取注册表年代数
         fetchRegistryGeneration = new AtomicLong(0);
 
         remoteRegionsToFetch = new AtomicReference<String>(clientConfig.fetchRegistryForRemoteRegions());
@@ -938,6 +939,7 @@ public class DiscoveryClient implements EurekaClient {
         try {
             // If the delta is disabled or if it is the first time, get all
             // applications
+            // 先获取本地缓存，即所有的服务
             Applications applications = getApplications();
 
             if (clientConfig.shouldDisableDelta()
@@ -947,6 +949,7 @@ public class DiscoveryClient implements EurekaClient {
                     || (applications.getRegisteredApplications().size() == 0)
                     || (applications.getVersion() == -1)) //Client application does not have latest library supporting delta
             {
+                // 抓取全量注册表
                 logger.info("Disable delta property : {}", clientConfig.shouldDisableDelta());
                 logger.info("Single vip registry refresh property : {}", clientConfig.getRegistryRefreshSingleVipAddress());
                 logger.info("Force full registry fetch : {}", forceFullRegistryFetch);
@@ -956,6 +959,7 @@ public class DiscoveryClient implements EurekaClient {
                 logger.info("Application version is -1: {}", (applications.getVersion() == -1));
                 getAndStoreFullRegistry();
             } else {
+                // 增量抓取
                 getAndUpdateDelta(applications);
             }
             applications.setAppsHashCode(applications.getReconcileHashCode());
@@ -1040,7 +1044,7 @@ public class DiscoveryClient implements EurekaClient {
 
         Applications apps = null;
         EurekaHttpResponse<Applications> httpResponse = clientConfig.getRegistryRefreshSingleVipAddress() == null
-                ? eurekaTransport.queryClient.getApplications(remoteRegionsRef.get())
+                ? eurekaTransport.queryClient.getApplications(remoteRegionsRef.get())//获取全量applications
                 : eurekaTransport.queryClient.getVip(clientConfig.getRegistryRefreshSingleVipAddress(), remoteRegionsRef.get());
         if (httpResponse.getStatusCode() == Status.OK.getStatusCode()) {
             apps = httpResponse.getEntity();
@@ -1050,6 +1054,7 @@ public class DiscoveryClient implements EurekaClient {
         if (apps == null) {
             logger.error("The application is null for some reason. Not storing this information");
         } else if (fetchRegistryGeneration.compareAndSet(currentUpdateGeneration, currentUpdateGeneration + 1)) {
+            // 把applications放进localRegionApps
             localRegionApps.set(this.filterAndShuffle(apps));
             logger.debug("Got full registry with apps hashcode {}", apps.getAppsHashCode());
         } else {
@@ -1073,6 +1078,7 @@ public class DiscoveryClient implements EurekaClient {
     private void getAndUpdateDelta(Applications applications) throws Throwable {
         long currentUpdateGeneration = fetchRegistryGeneration.get();
 
+        // 增量
         Applications delta = null;
         EurekaHttpResponse<Applications> httpResponse = eurekaTransport.queryClient.getDelta(remoteRegionsRef.get());
         if (httpResponse.getStatusCode() == Status.OK.getStatusCode()) {
@@ -1448,6 +1454,8 @@ public class DiscoveryClient implements EurekaClient {
     }
 
     /**
+     * 定时拉取注册表的任务
+     *
      * The task that fetches the registry information at specified intervals.
      *
      */
@@ -1486,7 +1494,7 @@ public class DiscoveryClient implements EurekaClient {
                     instanceRegionChecker.getAzToRegionMapper().refreshMapping();
                 }
             }
-
+            // 抓取注册表
             boolean success = fetchRegistry(remoteRegionsModified);
             if (success) {
                 registrySize = localRegionApps.get().size();

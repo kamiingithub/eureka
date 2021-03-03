@@ -87,6 +87,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     // CircularQueues here for debugging/statistics purposes only
     private final CircularQueue<Pair<Long, String>> recentRegisteredQueue;
     private final CircularQueue<Pair<Long, String>> recentCanceledQueue;
+    // 最近变化的服务实例，注册、下线。。。
     private ConcurrentLinkedQueue<RecentlyChangedItem> recentlyChangedQueue = new ConcurrentLinkedQueue<RecentlyChangedItem>();
 
     private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -121,6 +122,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
 
         this.renewsLastMin = new MeasuredRate(1000 * 60 * 1);
 
+        // 保持recentlyChangedQueue崭新
         this.deltaRetentionTimer.schedule(getDeltaRetentionTask(),
                 serverConfig.getDeltaRetentionTimerIntervalInMs(),
                 serverConfig.getDeltaRetentionTimerIntervalInMs());
@@ -190,6 +192,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      *
      * @see com.netflix.eureka.lease.LeaseManager#register(java.lang.Object, int, boolean)
      */
+    @Override
     public void register(InstanceInfo registrant, int leaseDuration, boolean isReplication) {
         try {
             // 读锁
@@ -364,6 +367,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      *
      * @see com.netflix.eureka.lease.LeaseManager#renew(java.lang.String, java.lang.String, boolean)
      */
+    @Override
     public boolean renew(String appName, String id, boolean isReplication) {
         RENEW.increment(isReplication);
         Map<String, Lease<InstanceInfo>> gMap = registry.get(appName);
@@ -707,6 +711,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      *
      * @see com.netflix.discovery.shared.LookupService#getApplications()
      */
+    @Override
     public Applications getApplications() {
         boolean disableTransparentFallback = serverConfig.disableTransparentFallbackToOtherRegion();
         if (disableTransparentFallback) {
@@ -875,6 +880,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     }
 
     /**
+     * 获取增量注册表
+     *
      * Get the registry information about the delta changes. The deltas are
      * cached for a window specified by
      * {@link EurekaServerConfig#getRetentionTimeInMSInDeltaQueue()}. Subsequent
@@ -893,6 +900,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         apps.setVersion(responseCache.getVersionDelta().get());
         Map<String, Application> applicationInstancesMap = new HashMap<String, Application>();
         try {
+            // 写锁
             write.lock();
             Iterator<RecentlyChangedItem> iter = this.recentlyChangedQueue.iterator();
             logger.debug("The number of elements in the delta queue is :"
@@ -916,11 +924,13 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 app.addInstance(decorateInstanceInfo(lease));
             }
 
+            // 默认是false
             boolean disableTransparentFallback = serverConfig.disableTransparentFallbackToOtherRegion();
 
             if (!disableTransparentFallback) {
                 Applications allAppsInLocalRegion = getApplications(false);
 
+                // 这里的regionNameVSRemoteRegistry,在eureka server初始化时，初始化上下文时初始化的
                 for (RemoteRegionRegistry remoteRegistry : this.regionNameVSRemoteRegistry.values()) {
                     Applications applications = remoteRegistry.getApplicationDeltas();
                     for (Application application : applications.getRegisteredApplications()) {
@@ -942,6 +952,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     }
 
     /**
+     * 从与上次拉取开始有变化的拉取注册表
+     *
      * Gets the application delta also including instances from the passed remote regions, with the instances from the
      * local region. <br/>
      *
@@ -976,7 +988,13 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         apps.setVersion(responseCache.getVersionDeltaWithRegions().get());
         Map<String, Application> applicationInstancesMap = new HashMap<String, Application>();
         try {
+            // 写锁
             write.lock();
+            /**
+             * 从recentlyChangedQueue获取信息,recentlyChangedQueue会在下方的方法中保持崭新
+             *
+             * @see AbstractInstanceRegistry#AbstractInstanceRegistry(EurekaServerConfig, EurekaClientConfig, ServerCodecs)
+             */
             Iterator<RecentlyChangedItem> iter = this.recentlyChangedQueue.iterator();
             logger.debug("The number of elements in the delta queue is :" + this.recentlyChangedQueue.size());
             while (iter.hasNext()) {
@@ -990,8 +1008,10 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 if (app == null) {
                     app = new Application(instanceInfo.getAppName());
                     applicationInstancesMap.put(instanceInfo.getAppName(), app);
+                    // 放入结果
                     apps.addApplication(app);
                 }
+                // 包装租约,放入application
                 app.addInstance(decorateInstanceInfo(lease));
             }
 
@@ -1077,6 +1097,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      *
      * @see com.netflix.discovery.shared.LookupService#getInstancesById(String)
      */
+    @Override
     @Deprecated
     public List<InstanceInfo> getInstancesById(String id) {
         return this.getInstancesById(id, true);
@@ -1322,6 +1343,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             }
         }
 
+        @Override
         public boolean offer(E e) {
             this.makeSpaceIfNotAvailable();
             return super.offer(e);
@@ -1341,6 +1363,10 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         return rule.apply(r, existingLease, isReplication).status();
     }
 
+    /**
+     * 对recentlyChangedQueue中过期的数据清除
+     * @return
+     */
     private TimerTask getDeltaRetentionTask() {
         return new TimerTask() {
 
@@ -1348,6 +1374,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             public void run() {
                 Iterator<RecentlyChangedItem> it = recentlyChangedQueue.iterator();
                 while (it.hasNext()) {
+                    // 如果recentlyChangedQueue中的记录太早了(早于三分钟)，则丢掉
                     if (it.next().getLastUpdateTime() <
                             System.currentTimeMillis() - serverConfig.getRetentionTimeInMSInDeltaQueue()) {
                         it.remove();

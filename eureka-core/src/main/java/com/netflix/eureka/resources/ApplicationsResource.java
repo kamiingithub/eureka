@@ -95,6 +95,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 获取全量注册表
+     *
      * Get information about all {@link com.netflix.discovery.shared.Applications}.
      *
      * @param version the version of the request.
@@ -141,6 +143,7 @@ public class ApplicationsResource {
             returnMediaType = MediaType.APPLICATION_XML;
         }
 
+        // cacheKey
         Key cacheKey = new Key(Key.EntityType.Application,
                 ResponseCacheImpl.ALL_APPS,
                 keyType, CurrentRequestVersion.get(), EurekaAccept.fromString(eurekaAccept), regions
@@ -160,6 +163,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 获取增量注册表
+     *
      * Get information about all delta changes in {@link com.netflix.discovery.shared.Applications}.
      *
      * <p>

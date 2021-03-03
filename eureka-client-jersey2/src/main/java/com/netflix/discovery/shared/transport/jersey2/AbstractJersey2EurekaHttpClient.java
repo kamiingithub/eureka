@@ -210,11 +210,21 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
         }
     }
 
+    /**
+     * 获取全量注册表
+     * @param regions
+     * @return 全量注册表
+     */
     @Override
     public EurekaHttpResponse<Applications> getApplications(String... regions) {
         return getApplicationsInternal("apps/", regions);
     }
 
+    /**
+     * 获取增量注册表
+     * @param regions
+     * @return
+     */
     @Override
     public EurekaHttpResponse<Applications> getDelta(String... regions) {
         return getApplicationsInternal("apps/delta", regions);
@@ -255,9 +265,17 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
         }
     }
 
+    /**
+     * 获取注册表
+     * @param urlPath
+     * @param regions
+     * @return
+     */
     private EurekaHttpResponse<Applications> getApplicationsInternal(String urlPath, String[] regions) {
         Response response = null;
         try {
+            // 全量 http://localhost:8080/v2/apps
+            // 增量 http://localhost:8080/v2/apps/delta
             WebTarget webTarget = jerseyClient.target(serviceUrl).path(urlPath);
             if (regions != null && regions.length > 0) {
                 webTarget = webTarget.queryParam("regions", StringUtil.join(regions));

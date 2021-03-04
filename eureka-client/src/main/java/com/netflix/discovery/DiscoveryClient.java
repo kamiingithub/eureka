@@ -333,13 +333,12 @@ public class DiscoveryClient implements EurekaClient {
         remoteRegionsToFetch = new AtomicReference<String>(clientConfig.fetchRegistryForRemoteRegions());
         remoteRegionsRef = new AtomicReference<>(remoteRegionsToFetch.get() == null ? null : remoteRegionsToFetch.get().split(","));
 
-        // eureka-server集群部署时,fetchRegistry和registerWithEureka都为false
         if (config.shouldFetchRegistry()) {
             this.registryStalenessMonitor = new ThresholdLevelsMetric(this, METRIC_REGISTRY_PREFIX + "lastUpdateSec_", new long[]{15L, 30L, 60L, 120L, 240L, 480L});
         } else {
             this.registryStalenessMonitor = ThresholdLevelsMetric.NO_OP_METRIC;
         }
-        // eureka-server集群部署时,fetchRegistry和registerWithEureka都为false
+
         if (config.shouldRegisterWithEureka()) {
             this.heartbeatStalenessMonitor = new ThresholdLevelsMetric(this, METRIC_REGISTRATION_PREFIX + "lastHeartbeatSec_", new long[]{15L, 30L, 60L, 120L, 240L, 480L});
         } else {
@@ -348,7 +347,7 @@ public class DiscoveryClient implements EurekaClient {
 
         logger.info("Initializing Eureka in region {}", clientConfig.getRegion());
 
-        // 单机启动,则释放一定的资源
+        // 不注册也不拉取,即单机,则释放一定的资源
         if (!config.shouldRegisterWithEureka() && !config.shouldFetchRegistry()) {
             logger.info("Client configured to neither register nor query for data.");
             scheduler = null;
@@ -842,6 +841,7 @@ public class DiscoveryClient implements EurekaClient {
                 REREGISTER_COUNTER.increment();
                 logger.info("{} - Re-registering apps/{}", PREFIX + appPathIdentifier, instanceInfo.getAppName());
                 long timestamp = instanceInfo.setIsDirtyWithTime();
+                // 请求404，就注册
                 boolean success = register();
                 if (success) {
                     instanceInfo.unsetIsDirty(timestamp);
@@ -1286,7 +1286,6 @@ public class DiscoveryClient implements EurekaClient {
         }
 
         if (clientConfig.shouldRegisterWithEureka()) {
-            // 调度注册
             int renewalIntervalInSecs = instanceInfo.getLeaseInfo().getRenewalIntervalInSecs();
             int expBackOffBound = clientConfig.getHeartbeatExecutorExponentialBackOffBound();
             logger.info("Starting heartbeat executor: " + "renew interval is: " + renewalIntervalInSecs);

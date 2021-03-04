@@ -208,20 +208,26 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         // Copy entire entry from neighboring DS node
         int count = 0;
 
+        // 失败则到下一个server获取
         for (int i = 0; ((i < serverConfig.getRegistrySyncRetries()) && (count == 0)); i++) {
             if (i > 0) {
                 try {
+                    // 如果第一次没有在本地的eureka client中获取到注册表
+                    // 说明本地的client还没有从其他eureka server上获取注册表
+                    // 所以此时会等待30s
                     Thread.sleep(serverConfig.getRegistrySyncRetryWaitMs());
                 } catch (InterruptedException e) {
                     logger.warn("Interrupted during registry transfer..");
                     break;
                 }
             }
+            // 这里的eurekaClient在初始化的时候就已经获取到app信息
             Applications apps = eurekaClient.getApplications();
             for (Application app : apps.getRegisteredApplications()) {
                 for (InstanceInfo instance : app.getInstances()) {
                     try {
                         if (isRegisterable(instance)) {
+                            // 注册到本地server
                             register(instance, instance.getLeaseInfo().getDurationInSecs(), true);
                             count++;
                         }
@@ -256,6 +262,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         }
         logger.info("Changing status to UP");
         applicationInfoManager.setInstanceStatus(InstanceStatus.UP);
+        // 自动故障感知逻辑
         super.postInit();
     }
 
@@ -647,10 +654,12 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
                 numberOfReplicationsLastMin.increment();
             }
             // If it is a replication already, do not replicate again as this will create a poison replication
+            // isReplication == true 说明发送这个注册请求已经是同步的请求了，不需要再传播了
             if (peerEurekaNodes == Collections.EMPTY_LIST || isReplication) {
                 return;
             }
 
+            // 遍历集群节点，进行同步
             for (final PeerEurekaNode node : peerEurekaNodes.getPeerEurekaNodes()) {
                 // If the url represents this host, do not replicate to yourself.
                 if (peerEurekaNodes.isThisMyUrl(node.getServiceUrl())) {
@@ -664,6 +673,8 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
     }
 
     /**
+     * 同步给集群
+     *
      * Replicates all instance changes to peer eureka nodes except for
      * replication traffic to this node.
      *

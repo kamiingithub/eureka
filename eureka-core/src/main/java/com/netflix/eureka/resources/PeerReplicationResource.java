@@ -96,6 +96,11 @@ public class PeerReplicationResource {
         }
     }
 
+    /**
+     * 根据操作类型分配
+     * @param instanceInfo
+     * @return
+     */
     private ReplicationInstanceResponse dispatch(ReplicationInstance instanceInfo) {
         ApplicationResource applicationResource = createApplicationResource(instanceInfo);
         InstanceResource resource = createInstanceResource(instanceInfo, applicationResource);

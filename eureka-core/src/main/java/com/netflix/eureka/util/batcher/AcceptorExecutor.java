@@ -120,6 +120,7 @@ class AcceptorExecutor<ID, T> {
     }
 
     void process(ID id, T task, long expiryTime) {
+        // 放入队列
         acceptorQueue.add(new TaskHolder<ID, T>(id, task, expiryTime));
         acceptedTasks++;
     }
@@ -177,12 +178,14 @@ class AcceptorExecutor<ID, T> {
         return singleItemWorkQueue.size() + batchWorkQueue.size();
     }
 
+    // 处理acceptorQueue的任务
     class AcceptorRunner implements Runnable {
         @Override
         public void run() {
             long scheduleTime = 0;
             while (!isShutdown.get()) {
                 try {
+                    // 掏空队列
                     drainInputQueues();
 
                     int totalItems = processingOrder.size();
@@ -192,6 +195,7 @@ class AcceptorExecutor<ID, T> {
                         scheduleTime = now + trafficShaper.transmissionDelay();
                     }
                     if (scheduleTime <= now) {
+                        // 分配batch任务
                         assignBatchWork();
                         assignSingleItemWork();
                     }
@@ -217,6 +221,7 @@ class AcceptorExecutor<ID, T> {
         private void drainInputQueues() throws InterruptedException {
             do {
                 drainReprocessQueue();
+                // 掏空acceptorQueue
                 drainAcceptorQueue();
 
                 if (!isShutdown.get()) {
@@ -233,6 +238,7 @@ class AcceptorExecutor<ID, T> {
 
         private void drainAcceptorQueue() {
             while (!acceptorQueue.isEmpty()) {
+                // 无限从acceptorQueue取任务
                 appendTaskHolder(acceptorQueue.poll());
             }
         }
@@ -264,6 +270,7 @@ class AcceptorExecutor<ID, T> {
             }
             TaskHolder<ID, T> previousTask = pendingTasks.put(taskHolder.getId(), taskHolder);
             if (previousTask == null) {
+                // 放到processingOrder
                 processingOrder.add(taskHolder.getId());
             } else {
                 overriddenTasks++;
@@ -288,7 +295,11 @@ class AcceptorExecutor<ID, T> {
             }
         }
 
+        /**
+         * 分配batch任务
+         */
         void assignBatchWork() {
+            // 每隔500ms打包
             if (hasEnoughTasksForNextBatch()) {
                 if (batchWorkRequests.tryAcquire(1)) {
                     long now = System.currentTimeMillis();
@@ -307,6 +318,7 @@ class AcceptorExecutor<ID, T> {
                         batchWorkRequests.release();
                     } else {
                         batchSizeMetric.record(holders.size(), TimeUnit.MILLISECONDS);
+                        // 打包
                         batchWorkQueue.add(holders);
                     }
                 }
@@ -323,6 +335,7 @@ class AcceptorExecutor<ID, T> {
 
             TaskHolder<ID, T> nextHolder = pendingTasks.get(processingOrder.peek());
             long delay = System.currentTimeMillis() - nextHolder.getSubmitTimestamp();
+            // 默认500ms
             return delay >= maxBatchingDelay;
         }
     }

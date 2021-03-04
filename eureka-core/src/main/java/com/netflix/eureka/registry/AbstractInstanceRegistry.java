@@ -1278,6 +1278,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             evictionTaskRef.get().cancel();
         }
         evictionTaskRef.set(new EvictionTask());
+        // 调度自动故障感知线程
         evictionTimer.schedule(evictionTaskRef.get(),
                 serverConfig.getEvictionIntervalTimerInMs(),
                 serverConfig.getEvictionIntervalTimerInMs());

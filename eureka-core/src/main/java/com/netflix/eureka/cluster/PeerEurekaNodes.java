@@ -85,6 +85,7 @@ public class PeerEurekaNodes {
                 }
         );
         try {
+            // 根据配置的server节点url，更新PeerEurekaNodes
             updatePeerEurekaNodes(resolvePeerUrls());
             Runnable peersUpdateTask = new Runnable() {
                 @Override
@@ -187,6 +188,7 @@ public class PeerEurekaNodes {
         if (!toAdd.isEmpty()) {
             logger.info("Adding new peer nodes {}", toAdd);
             for (String peerUrl : toAdd) {
+                // 根据每一个server阶段的url构造一个PeerEurekaNode，放入集合
                 newNodeList.add(createPeerEurekaNode(peerUrl));
             }
         }
@@ -196,6 +198,7 @@ public class PeerEurekaNodes {
     }
 
     protected PeerEurekaNode createPeerEurekaNode(String peerEurekaNodeUrl) {
+        // 获取同步客户端
         HttpReplicationClient replicationClient = JerseyReplicationClient.createReplicationClient(serverConfig, serverCodecs, peerEurekaNodeUrl);
         String targetHost = hostFromUrl(peerEurekaNodeUrl);
         if (targetHost == null) {

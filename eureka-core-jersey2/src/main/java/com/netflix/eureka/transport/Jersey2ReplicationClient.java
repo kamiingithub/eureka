@@ -50,6 +50,7 @@ public class Jersey2ReplicationClient extends AbstractJersey2EurekaHttpClient im
 
     @Override
     protected void addExtraHeaders(Builder webResource) {
+        // 集群节点间设置同步为true
         webResource.header(PeerEurekaNode.HEADER_REPLICATION, "true");
     }
 
@@ -106,10 +107,17 @@ public class Jersey2ReplicationClient extends AbstractJersey2EurekaHttpClient im
         }
     }
 
+    /**
+     * 发送batch请求
+     *
+     * @param replicationList
+     * @return
+     */
     @Override
     public EurekaHttpResponse<ReplicationListResponse> submitBatchUpdates(ReplicationList replicationList) {
         Response response = null;
         try {
+            // http://localhost:8080/v2/peerapplication/batch
             response = jerseyClient.target(serviceUrl)
                     .path(PeerEurekaNode.BATCH_URL_PATH)
                     .request(MediaType.APPLICATION_JSON_TYPE)

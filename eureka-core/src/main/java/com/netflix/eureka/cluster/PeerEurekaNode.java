@@ -133,6 +133,7 @@ public class PeerEurekaNode {
      */
     public void register(final InstanceInfo info) throws Exception {
         long expiryTime = System.currentTimeMillis() + getLeaseRenewalOf(info);
+        // 批处理
         batchingDispatcher.process(
                 taskId("register", info),
                 new InstanceReplicationTask(targetHost, Action.Register, info, null, true) {
